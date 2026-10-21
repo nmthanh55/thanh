@@ -1,0 +1,39 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-testpass}
+    ports:
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${MYSQL_PASSWORD:-testpass}"]
+      interval: 5s
+      retries: 30
+
+  helios:
+    build: ./docker/helios
+    ports:
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - helios-data:/data
+
+  app:
+    build: .
+    depends_on:
+      mysql:
+        condition: service_healthy
+      helios:
+        condition: service_started
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-testpass}
+      HELIOS_HOST: helios
+      HELIOS_PORT: 3306
+    ports:
+      - "127.0.0.1:3000:3000"
+
+volumes:
+  mysql-data:
+  helios-data:
