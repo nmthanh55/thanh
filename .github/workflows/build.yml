@@ -1,0 +1,46 @@
+name: build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: testpass
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -ptestpass"
+          --health-interval 5s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Test (unit + MySQL integration)
+        env:
+          TESTDB_MYSQL_HOST: 127.0.0.1
+          TESTDB_MYSQL_PASSWORD: testpass
+        run: dotnet test tests/TestDbHub.Core.Tests
+
+  publish:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Publish TestDbHub.exe
+        run: >-
+          dotnet publish src/TestDbHub.Wpf -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -o publish
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TestDbHub-win-x64
+          path: publish/TestDbHub.exe

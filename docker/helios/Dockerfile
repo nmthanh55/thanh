@@ -13,6 +13,6 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 COPY --from=build /usr/local/cargo/bin/heliosdb-nano /usr/local/bin/heliosdb-nano
 VOLUME /data
-EXPOSE 3306
-# MySQL wire is trust-only in Nano; compose publishes it on 127.0.0.1 only.
-CMD ["heliosdb-nano", "start", "--data-dir", "/data", "--mysql", "--mysql-listen", "0.0.0.0:3306", "--http-port", "0"]
+EXPOSE 5432
+# Trust auth for local test use; docker-compose publishes the port on 127.0.0.1 only.
+CMD ["heliosdb-nano", "start", "--data-dir", "/data", "--listen", "0.0.0.0", "--allow-insecure-trust", "--http-port", "0"]
