@@ -53,6 +53,10 @@ public sealed class ConnectionSettings
     public bool LocalEnabled { get; set; } = true;
     public string LocalFolder { get; set; } = "";
 
+    // Portable MySQL started by TestDB Hub itself. Empty folder = default location.
+    public string LocalMySqlFolder { get; set; } = "";
+    public int LocalMySqlPort { get; set; } = 3306;
+
     public bool MySqlEnabled { get; set; }
     public string MySqlHost { get; set; } = "127.0.0.1";
     public int MySqlPort { get; set; } = 3306;

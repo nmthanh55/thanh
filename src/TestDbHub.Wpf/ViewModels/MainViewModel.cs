@@ -439,6 +439,41 @@ public sealed partial class MainViewModel : ObservableObject
         });
     }
 
+    // ---------- Local MySQL ----------
+
+    [RelayCommand]
+    private void OpenLocalMySql()
+    {
+        var mysql = new LocalMySql(_settings.LocalMySqlFolder, _settings.LocalMySqlPort);
+        new LocalMySqlWindow(mysql, () => UseLocalMySqlAsync(mysql)).ShowDialog();
+    }
+
+    // Once the local server runs, point TestDB Hub's MySQL connection at it.
+    private async Task UseLocalMySqlAsync(LocalMySql mysql)
+    {
+        var s = _settings;
+        bool alreadyLocal = s.MySqlEnabled && s.MySqlHost is "127.0.0.1" or "localhost" && s.MySqlPort == mysql.Port
+            && s.MySqlUser == "root" && s.MySqlPassword == "";
+        if (!alreadyLocal)
+        {
+            if (s.MySqlEnabled && !Confirm($"Chuyển kết nối MySQL của TestDB Hub từ {s.MySqlHost}:{s.MySqlPort} sang MySQL nội bộ (127.0.0.1:{mysql.Port})?")) return;
+            s.MySqlEnabled = true;
+            s.MySqlHost = "127.0.0.1";
+            s.MySqlPort = mysql.Port;
+            s.MySqlUser = "root";
+            s.MySqlPassword = "";
+            try
+            {
+                SettingsStore.Save(s);
+            }
+            catch (Exception ex)
+            {
+                ShowError("Không lưu được cấu hình: " + ex.Message);
+            }
+        }
+        await RefreshAsync();
+    }
+
     // ---------- Settings ----------
 
     [RelayCommand]
@@ -449,6 +484,7 @@ public sealed partial class MainViewModel : ObservableObject
         var localOn = form.AddCheck("Dùng database tích hợp (SQLite — không cần cài đặt)", s.LocalEnabled);
         var localFolder = form.AddText("Thư mục lưu database tích hợp", s.LocalFolder,
             $"Để trống = mặc định: {SqliteEngine.DefaultFolder}");
+        var localMyPort = form.AddText("MySQL nội bộ (🐬) — cổng", s.LocalMySqlPort.ToString(CultureInfo.InvariantCulture));
         var myOn = form.AddCheck("Dùng MySQL", s.MySqlEnabled);
         var myHost = form.AddText("MySQL — máy chủ", s.MySqlHost);
         var myPort = form.AddText("MySQL — cổng", s.MySqlPort.ToString(CultureInfo.InvariantCulture));
@@ -460,13 +496,15 @@ public sealed partial class MainViewModel : ObservableObject
         var heUser = form.AddText("HeliosDB — tài khoản", s.HeliosUser);
         var hePass = form.AddPassword("HeliosDB — mật khẩu (để trống nếu chạy --auth trust)", s.HeliosPassword);
         var heDb = form.AddText("HeliosDB — tên database", s.HeliosDatabase);
-        form.Validate(() => IsPort(myPort.Text) && IsPort(hePort.Text) ? null : "Cổng phải là số từ 1 đến 65535");
+        form.Validate(() => IsPort(myPort.Text) && IsPort(hePort.Text) && IsPort(localMyPort.Text) ? null : "Cổng phải là số từ 1 đến 65535");
         if (!form.ShowForm()) return;
 
         _settings = new ConnectionSettings
         {
             LocalEnabled = localOn.IsChecked == true,
             LocalFolder = localFolder.Text.Trim(),
+            LocalMySqlFolder = s.LocalMySqlFolder,
+            LocalMySqlPort = int.Parse(localMyPort.Text, CultureInfo.InvariantCulture),
             MySqlEnabled = myOn.IsChecked == true,
             MySqlHost = myHost.Text.Trim(),
             MySqlPort = int.Parse(myPort.Text, CultureInfo.InvariantCulture),

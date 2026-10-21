@@ -21,6 +21,7 @@ cần cài đặt, không cần quyền admin. MySQL và HeliosDB-Nano chỉ là
 | Xem bảng, cấu trúc cột | ✅ | ✅ | ✅ |
 | Xuất / mở file `.sql` | ✅ | ✅ | ✅ |
 | Sao chép bảng giữa các nơi lưu | ✅ | ✅ | ✅ |
+| Chạy ngay trên máy, không cài đặt | ✅ | ✅ qua **🐬 MySQL nội bộ** (bản ZIP) | — |
 
 Database tích hợp lưu ở `%LocalAppData%\TestDbHub\databases\<tên database>\` (đổi được trong **⚙ Kết nối**).
 Mỗi nhánh là một file `.sqlite`, nên có thể sao lưu bằng cách chép thư mục, hoặc mở bằng DB Browser for SQLite.
@@ -43,6 +44,34 @@ dotnet run --project src/TestDbHub.Wpf
 ```
 
 Hoặc mở `TestDbHub.sln` bằng Visual Studio rồi nhấn F5.
+
+## MySQL nội bộ: chạy web ở máy local mà không cần cài MySQL
+
+Web viết cho MySQL (ví dụ web portal) không chạy được trên database tích hợp SQLite. Nút **🐬 MySQL nội bộ** chạy
+**MySQL thật** từ bản ZIP chính thức: không cài đặt, không cần quyền admin, chỉ nhận kết nối từ chính máy này.
+
+1. Tải MySQL tại https://dev.mysql.com/downloads/mysql/ → *Microsoft Windows* → **Windows (x86, 64-bit), ZIP
+   Archive**. Nên chọn **cùng bản với server** (ví dụ 8.4) để code chạy y hệt khi đưa lên server.
+2. Trong TestDB Hub bấm **🐬 MySQL nội bộ** → **Chọn file ZIP MySQL...** → **▶ Bật**. Lần đầu app tự khởi tạo dữ
+   liệu (tài khoản `root`, không mật khẩu) và tự trỏ kết nối MySQL của TestDB Hub vào đây.
+3. **Nạp file .sql...** để đưa bản backup (file `mysqldump`) vào.
+4. Chép **chuỗi kết nối** trong cửa sổ đó vào `appsettings.json` của web (đổi `ten_database` thành tên thật).
+5. Trước mỗi đợt test bấm **📸 Snapshot** database đó; test xong bấm **↺ Khôi phục vào main** để về dữ liệu cũ.
+
+MySQL nội bộ vẫn chạy khi đóng TestDB Hub (để web dùng tiếp); bấm **■ Tắt** trong cửa sổ đó để dừng. Dữ liệu nằm ở
+`%LocalAppData%\TestDbHub\mysql\`. Nếu báo thiếu `VCRUNTIME140.dll`: chép `vcruntime140.dll`, `vcruntime140_1.dll`,
+`msvcp140.dll` từ `C:\Windows\System32` của máy khác vào `%LocalAppData%\TestDbHub\mysql\server\bin`, hoặc nhờ IT cài
+*Visual C++ Redistributable x64*.
+
+**Quy trình test local rồi đưa lên server:**
+
+```
+sửa code ──> chạy web ở máy local, nối MySQL nội bộ (dữ liệu test) ──> chạy ổn
+         ──> git push lên GitHub ──> server cập nhật như hiện nay (nối MySQL thật của server)
+```
+
+`appsettings.json` của mỗi nơi giữ riêng (không đưa lên GitHub), nên máy local nối MySQL nội bộ còn server nối MySQL
+của server mà không phải sửa code.
 
 ## Kết nối MySQL / HeliosDB-Nano (tuỳ chọn)
 
@@ -112,11 +141,13 @@ src/
     Engines/DbEngine.cs       phần chung: chạy SQL, đọc/ghi bảng, xuất .sql
     Sessions/PgSimpleSession.cs  client PostgreSQL simple-query (trust/MD5/SCRAM)
     CopyService.cs            sao chép bảng giữa các engine
+    LocalMySql.cs             MySQL nội bộ: giải nén ZIP, bật/tắt mysqld, nạp file .sql
     PortableSql.cs            quy đổi kiểu dữ liệu và literal SQL
     SqlSplitter.cs            tách script thành từng câu lệnh
   TestDbHub.Wpf/              ứng dụng WPF (net10.0-windows, MVVM với CommunityToolkit.Mvvm)
     Views/MainWindow.xaml     cửa sổ chính
     Views/FormDialog.cs       hộp thoại nhập liệu dùng chung
+    Views/LocalMySqlWindow.cs cửa sổ 🐬 MySQL nội bộ
     ViewModels/               MainViewModel, cây engine/database/nhánh, kết quả truy vấn
     Services/SettingsStore.cs lưu cấu hình kết nối
 tests/TestDbHub.Core.Tests/   xUnit: unit test, test SQLite, test với MySQL/HeliosDB thật
@@ -131,6 +162,7 @@ dotnet test                                    # unit test + database tích hợ
 # Test tích hợp chạy với máy chủ thật khi đặt biến môi trường:
 export TESTDB_MYSQL_HOST=127.0.0.1 TESTDB_MYSQL_PASSWORD=testpass
 export TESTDB_HELIOS_HOST=127.0.0.1 TESTDB_HELIOS_PORT=5432
+export TESTDB_MYSQLD_BIN=/usr/bin              # thư mục có mysqld + mysql để test MySQL nội bộ
 dotnet test
 ```
 

@@ -24,6 +24,8 @@
                     <Button Content="⟳ Làm mới" Command="{Binding RefreshCommand}" Style="{StaticResource ActionButton}" Margin="0,0,6,0" />
                     <Button Content="+ Database" Command="{Binding NewDatabaseCommand}" Style="{StaticResource ActionButton}" Margin="0,0,6,0"
                             ToolTip="Tạo database test mới (tích hợp hoặc MySQL)" />
+                    <Button Content="🐬 MySQL nội bộ" Command="{Binding OpenLocalMySqlCommand}" Style="{StaticResource ActionButton}" Margin="0,0,6,0"
+                            ToolTip="Chạy MySQL thật từ bản ZIP để test web trên máy này — không cần cài đặt" />
                     <Button Content="⚙ Kết nối" Command="{Binding OpenSettingsCommand}" Style="{StaticResource ActionButton}" Margin="0,0,6,0" />
                 </StackPanel>
             </DockPanel>
