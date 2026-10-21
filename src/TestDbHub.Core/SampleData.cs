@@ -2,9 +2,9 @@ namespace TestDbHub.Core;
 
 public static class SampleData
 {
-    /// <summary>Sample script that runs on both MySQL and HeliosDB-Nano.</summary>
+    /// <summary>Sample script that runs on SQLite, MySQL and HeliosDB-Nano.</summary>
     public const string Sql = """
-        -- Dữ liệu mẫu: chạy được trên cả MySQL và HeliosDB-Nano
+        -- Dữ liệu mẫu: chạy được trên SQLite (tích hợp), MySQL và HeliosDB-Nano
         CREATE TABLE customers (id INT PRIMARY KEY, name VARCHAR(100), email VARCHAR(120), city VARCHAR(60));
         CREATE TABLE orders (id INT PRIMARY KEY, customer_id INT, total DECIMAL(10,2), created_at DATE);
 

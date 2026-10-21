@@ -10,6 +10,7 @@
         <SolidColorBrush x:Key="DangerBrush" Color="#C62828" />
         <SolidColorBrush x:Key="MySqlBrush" Color="#00758F" />
         <SolidColorBrush x:Key="HeliosBrush" Color="#C2410C" />
+        <SolidColorBrush x:Key="LocalBrush" Color="#15803D" />
         <FontFamily x:Key="CodeFont">Cascadia Mono, Consolas, Courier New</FontFamily>
 
         <Style x:Key="ActionButton" TargetType="Button">

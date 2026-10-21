@@ -3,10 +3,10 @@ using System.Text;
 
 namespace TestDbHub.Core;
 
-public enum SqlDialect { MySql, Helios }
+public enum SqlDialect { MySql, Helios, Sqlite }
 
 /// <summary>
-/// Column types and literals that both MySQL and HeliosDB-Nano understand,
+/// Column types and literals for MySQL, HeliosDB-Nano and SQLite,
 /// used to recreate a table on another engine and to write .sql exports.
 /// </summary>
 public static class PortableSql
@@ -22,11 +22,11 @@ public static class PortableSql
             PortableType.Double => "DOUBLE PRECISION",
             PortableType.Decimal => DecimalType(col),
             PortableType.Date => "DATE",
-            PortableType.DateTime => mysql ? "DATETIME(6)" : "TIMESTAMP",
+            PortableType.DateTime => dialect switch { SqlDialect.MySql => "DATETIME(6)", SqlDialect.Helios => "TIMESTAMP", _ => "DATETIME" },
             PortableType.Time => "TIME",
             PortableType.Json => "JSON",
             PortableType.Uuid => mysql ? "CHAR(36)" : "TEXT",
-            PortableType.Binary => mysql ? "LONGBLOB" : "BYTEA",
+            PortableType.Binary => dialect switch { SqlDialect.MySql => "LONGBLOB", SqlDialect.Helios => "BYTEA", _ => "BLOB" },
             _ => mysql ? "LONGTEXT" : "TEXT",
         };
     }
@@ -68,14 +68,14 @@ public static class PortableSql
 
     public static string Literal(object? value, PortableColumn? col, SqlDialect dialect)
     {
-        bool mysql = dialect == SqlDialect.MySql;
+        bool helios = dialect == SqlDialect.Helios;
         switch (value)
         {
             case null:
             case DBNull:
                 return "NULL";
             case bool b:
-                return mysql ? (b ? "1" : "0") : (b ? "TRUE" : "FALSE");
+                return helios ? (b ? "TRUE" : "FALSE") : (b ? "1" : "0");
             case sbyte or byte or short or ushort or int or uint or long or ulong:
                 return Convert.ToString(value, CultureInfo.InvariantCulture)!;
             case decimal d:
@@ -94,7 +94,7 @@ public static class PortableSql
             case TimeSpan ts:
                 return Quote(FormatTime(ts), dialect);
             case byte[] bytes:
-                return mysql ? $"X'{Convert.ToHexString(bytes)}'" : $"'\\x{Convert.ToHexString(bytes)}'";
+                return helios ? $"'\\x{Convert.ToHexString(bytes)}'" : $"X'{Convert.ToHexString(bytes)}'";
             default:
                 return Quote(Convert.ToString(value, CultureInfo.InvariantCulture) ?? "", dialect);
         }

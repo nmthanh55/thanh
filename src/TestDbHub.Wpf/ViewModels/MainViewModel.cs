@@ -49,7 +49,12 @@ public sealed partial class MainViewModel : ObservableObject
     public bool NoContext => Current is null;
     public string ContextEngine => Current?.Engine.Label ?? "";
     public string ContextPath => Current is null ? "" : $"{Current.Database}  ›  {Current.Icon} {Current.Info.Name}";
-    public Brush ContextBrush => (Brush)Application.Current.Resources[Current?.Engine.Id == "helios" ? "HeliosBrush" : "MySqlBrush"];
+    public Brush ContextBrush => (Brush)Application.Current.Resources[Current?.Engine.Id switch
+    {
+        "helios" => "HeliosBrush",
+        "mysql" => "MySqlBrush",
+        _ => "LocalBrush",
+    }];
     public bool CanSnapshot => Current is { IsMain: true } c && c.Engine.Features.Snapshots;
     public bool CanTimeTravel => Current?.Engine.Features.TimeTravel == true;
     public bool CanMerge => Current is { IsMain: false };
@@ -227,16 +232,20 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task NewDatabaseAsync()
     {
-        var engineNode = Engines.FirstOrDefault(e => e.Status.Ok && e.Engine.Features.MultipleDatabases);
-        if (engineNode is null)
+        var candidates = Engines.Where(e => e.Status.Ok && e.Engine.Features.MultipleDatabases).ToList();
+        if (candidates.Count == 0)
         {
-            ShowError("Chưa kết nối được MySQL — kiểm tra ⚙ Kết nối.");
+            ShowError("Chưa có nơi lưu database nào sẵn sàng — bật database tích hợp hoặc MySQL trong ⚙ Kết nối.");
             return;
         }
-        var form = new FormDialog($"Tạo database trên {engineNode.Engine.Label}", "Tạo");
+        var preferred = candidates.FirstOrDefault(e => e.Engine == Current?.Engine) ?? candidates[0];
+        var form = new FormDialog("Tạo database test", "Tạo");
         var name = form.AddText("Tên database", "", "Chữ, số và dấu _ ; bắt đầu bằng chữ. Ví dụ: shop_test");
+        var where = form.AddCombo("Lưu ở", candidates, preferred, e => e.Title,
+            "Tích hợp (SQLite): lưu ngay trên máy này, không cần cài gì.");
         form.Validate(() => Names.IsValid(name.Text) ? null : "Tên không hợp lệ");
         if (!form.ShowForm()) return;
+        var engineNode = FormDialog.Selected<EngineNode>(where) ?? preferred;
         await BusyAsync($"Đang tạo database {name.Text}...", async () =>
         {
             await engineNode.Engine.CreateDatabaseAsync(name.Text);
@@ -437,6 +446,9 @@ public sealed partial class MainViewModel : ObservableObject
     {
         var s = _settings;
         var form = new FormDialog("Kết nối", "Lưu & kết nối lại");
+        var localOn = form.AddCheck("Dùng database tích hợp (SQLite — không cần cài đặt)", s.LocalEnabled);
+        var localFolder = form.AddText("Thư mục lưu database tích hợp", s.LocalFolder,
+            $"Để trống = mặc định: {SqliteEngine.DefaultFolder}");
         var myOn = form.AddCheck("Dùng MySQL", s.MySqlEnabled);
         var myHost = form.AddText("MySQL — máy chủ", s.MySqlHost);
         var myPort = form.AddText("MySQL — cổng", s.MySqlPort.ToString(CultureInfo.InvariantCulture));
@@ -453,6 +465,8 @@ public sealed partial class MainViewModel : ObservableObject
 
         _settings = new ConnectionSettings
         {
+            LocalEnabled = localOn.IsChecked == true,
+            LocalFolder = localFolder.Text.Trim(),
             MySqlEnabled = myOn.IsChecked == true,
             MySqlHost = myHost.Text.Trim(),
             MySqlPort = int.Parse(myPort.Text, CultureInfo.InvariantCulture),

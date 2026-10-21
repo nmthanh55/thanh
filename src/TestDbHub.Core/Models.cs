@@ -49,14 +49,18 @@ public sealed record CopiedTable(string Table, int Rows);
 
 public sealed class ConnectionSettings
 {
-    public bool MySqlEnabled { get; set; } = true;
+    // Built-in SQLite storage: nothing to install. Empty folder = default location.
+    public bool LocalEnabled { get; set; } = true;
+    public string LocalFolder { get; set; } = "";
+
+    public bool MySqlEnabled { get; set; }
     public string MySqlHost { get; set; } = "127.0.0.1";
     public int MySqlPort { get; set; } = 3306;
     public string MySqlUser { get; set; } = "root";
     public string MySqlPassword { get; set; } = "";
 
     // HeliosDB-Nano is reached over its PostgreSQL wire protocol.
-    public bool HeliosEnabled { get; set; } = true;
+    public bool HeliosEnabled { get; set; }
     public string HeliosHost { get; set; } = "127.0.0.1";
     public int HeliosPort { get; set; } = 5432;
     public string HeliosUser { get; set; } = "postgres";

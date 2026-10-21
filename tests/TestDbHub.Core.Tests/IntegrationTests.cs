@@ -160,6 +160,62 @@ public class IntegrationTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task CopiesTablesBetweenBuiltInAndServers()
+    {
+        var mysql = MySql();
+        var helios = Helios();
+        if (mysql is null && helios is null) return;
+        var root = Path.Combine(Path.GetTempPath(), "testdbhub-it-" + Suffix);
+        var local = new SqliteEngine(root);
+        try
+        {
+            await local.CreateDatabaseAsync("src");
+            await local.CreateDatabaseAsync("back");
+            AssertNoErrors(await local.QueryAsync("src", "main", SampleData.Sql));
+            var from = new Location(local.Id, "src", "main");
+
+            if (mysql is not null)
+            {
+                var db = "it_local_" + Suffix;
+                await mysql.CreateDatabaseAsync(db);
+                try
+                {
+                    await CopyService.CopyTablesAsync(local, from, mysql, new Location(mysql.Id, db, "main"));
+                    Assert.Equal(1865000.00m, Convert.ToDecimal(await ScalarAsync(mysql, db, "main", "SELECT SUM(total) FROM orders")));
+                    await CopyService.CopyTablesAsync(mysql, new Location(mysql.Id, db, "main"), local, new Location(local.Id, "back", "main"), ["customers"]);
+                    Assert.Equal("Trần Thị Bình", await ScalarAsync(local, "back", "main", "SELECT name FROM customers WHERE id = 2"));
+                }
+                finally
+                {
+                    await mysql.DropDatabaseAsync(db);
+                }
+            }
+
+            if (helios is not null)
+            {
+                var branch = "it_local_" + Suffix;
+                await helios.CreateBranchAsync(helios.DatabaseName, branch);
+                try
+                {
+                    var to = new Location(helios.Id, helios.DatabaseName, branch);
+                    await CopyService.CopyTablesAsync(local, from, helios, to);
+                    Assert.Equal(1865000.00m, Convert.ToDecimal(await ScalarAsync(helios, to.Database, branch, "SELECT SUM(total) FROM orders")));
+                    await CopyService.CopyTablesAsync(helios, to, local, new Location(local.Id, "back", "main"), ["orders"]);
+                    Assert.Equal(1865000m, Convert.ToDecimal(await ScalarAsync(local, "back", "main", "SELECT SUM(total) FROM orders")));
+                }
+                finally
+                {
+                    await helios.DropBranchAsync(helios.DatabaseName, branch);
+                }
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task CopiesTablesBetweenMySqlAndHelios()
     {
         var mysql = MySql();

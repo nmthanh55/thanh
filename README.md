@@ -1,31 +1,40 @@
 # TestDB Hub (WPF)
 
-Ứng dụng desktop **WPF (C# / .NET 8)** để lưu **database test** trên **MySQL**, nhưng quản lý theo kiểu
-**HeliosDB-Nano**: mỗi database có nhánh `main`. Bạn có thể tạo nhánh để thử nghiệm, chụp snapshot, khôi phục,
-merge, chạy SQL, và sao chép bảng qua lại giữa MySQL và HeliosDB-Nano.
+Ứng dụng desktop **WPF (C# / .NET 10)** để lưu **database test** và quản lý theo kiểu **HeliosDB-Nano**: mỗi
+database có nhánh `main`. Bạn có thể tạo nhánh để thử nghiệm, chụp snapshot, khôi phục, merge, chạy SQL, xuất
+`.sql`, và sao chép bảng qua lại giữa các nơi lưu.
+
+**Không cần cài MySQL.** App có sẵn **database tích hợp (SQLite)**: dữ liệu lưu thành file ngay trên máy, không
+cần cài đặt, không cần quyền admin. MySQL và HeliosDB-Nano chỉ là tuỳ chọn khi bạn có máy chủ để kết nối.
 
 ## Tính năng
 
-| Tính năng | MySQL | HeliosDB-Nano |
-|---|---|---|
-| Tạo / xoá database test | ✅ nhiều database | Một database (`heliosdb`), dùng nhánh thay thế |
-| Nhánh (branch) | ✅ giả lập: sao chép bảng sang schema `<db>__<nhánh>` | ✅ nhánh thật (`CREATE DATABASE BRANCH`) |
-| Snapshot + khôi phục | ✅ snapshot `snap_<thời gian>`, khôi phục = ghi đè main | Dùng time-travel thay thế |
-| Time-travel (`AS OF TIMESTAMP`) | — | ✅ xem bảng tại một thời điểm, tạo nhánh từ quá khứ |
-| Merge nhánh vào main | Ghi đè main bằng nội dung nhánh | `MERGE BRANCH … INTO main` |
-| Trình soạn SQL, chạy nhiều câu, kết quả dạng bảng | ✅ | ✅ |
-| Xem bảng, cấu trúc cột | ✅ | ✅ |
-| Xuất / mở file `.sql` | ✅ | ✅ |
-| Sao chép bảng MySQL ⇄ HeliosDB | ✅ | ✅ |
+| Tính năng | Tích hợp (SQLite) | MySQL (tuỳ chọn) | HeliosDB-Nano (tuỳ chọn) |
+|---|---|---|---|
+| Cần cài đặt | **Không** | Máy chủ MySQL | Máy chủ HeliosDB-Nano |
+| Tạo / xoá database test | ✅ | ✅ | Một database, dùng nhánh thay thế |
+| Nhánh (branch) | ✅ mỗi nhánh là một file | ✅ giả lập bằng schema `<db>__<nhánh>` | ✅ nhánh thật |
+| Snapshot + khôi phục | ✅ | ✅ | Dùng time-travel thay thế |
+| Merge nhánh vào main | Ghi đè main | Ghi đè main | `MERGE BRANCH … INTO main` |
+| Time-travel (`AS OF TIMESTAMP`) | — | — | ✅ |
+| Trình soạn SQL, kết quả dạng bảng | ✅ | ✅ | ✅ |
+| Xem bảng, cấu trúc cột | ✅ | ✅ | ✅ |
+| Xuất / mở file `.sql` | ✅ | ✅ | ✅ |
+| Sao chép bảng giữa các nơi lưu | ✅ | ✅ | ✅ |
+
+Database tích hợp lưu ở `%LocalAppData%\TestDbHub\databases\<tên database>\` (đổi được trong **⚙ Kết nối**).
+Mỗi nhánh là một file `.sqlite`, nên có thể sao lưu bằng cách chép thư mục, hoặc mở bằng DB Browser for SQLite.
 
 ## Tải và chạy
 
 ### Cách 1: tải file `.exe` có sẵn
 Mỗi lần đẩy code, GitHub Actions build sẵn `TestDbHub.exe`. Vào tab **Actions** → lần chạy **build** mới nhất →
-mục **Artifacts** → tải **TestDbHub-win-x64**. File đã kèm .NET nên chạy ngay trên Windows 10/11 x64.
+mục **Artifacts** → tải **TestDbHub-win-x64** (file zip, giải nén ra `TestDbHub.exe`). File đã kèm .NET 10 và
+SQLite nên chạy ngay trên Windows 10/11 x64, không cần cài gì. Lần đầu mở, Windows SmartScreen có thể cảnh báo vì
+file chưa ký số: bấm **More info → Run anyway**. Máy công ty có chính sách chặn file `.exe` lạ thì cần IT cho phép.
 
 ### Cách 2: build từ mã nguồn
-Cần [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) trên Windows (hoặc Visual Studio 2022):
+Cần [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) trên Windows (hoặc Visual Studio 2026):
 
 ```powershell
 git clone https://github.com/nmthanh55/thanh.git
@@ -35,42 +44,39 @@ dotnet run --project src/TestDbHub.Wpf
 
 Hoặc mở `TestDbHub.sln` bằng Visual Studio rồi nhấn F5.
 
-## Chuẩn bị máy chủ database
+## Kết nối MySQL / HeliosDB-Nano (tuỳ chọn)
 
-Cách nhanh nhất là dùng Docker:
+Chỉ cần nếu bạn muốn dùng thêm máy chủ. Bấm **⚙ Kết nối**, tick **Dùng MySQL** hoặc **Dùng HeliosDB-Nano**, rồi
+nhập máy chủ, cổng, tài khoản và mật khẩu. Cấu hình lưu ở `%AppData%\TestDbHub\settings.json`; mật khẩu được mã
+hoá bằng Windows DPAPI.
+
+Muốn chạy thử nhanh hai máy chủ này bằng Docker:
 
 ```bash
-docker compose up -d     # lần đầu build HeliosDB-Nano mất 10–20 phút
+docker compose up -d     # MySQL 127.0.0.1:3306 (root / testpass), HeliosDB-Nano 127.0.0.1:5432
 ```
-
-Lệnh này mở MySQL tại `127.0.0.1:3306` (root / `testpass`) và HeliosDB-Nano tại `127.0.0.1:5432` (giao thức
-PostgreSQL). Không dùng Docker thì:
-
-- **MySQL**: dùng MySQL 8 có sẵn.
-- **HeliosDB-Nano**: `cargo install heliosdb-nano --locked`, hoặc tải binary ở
-  [GitHub Releases](https://github.com/HeliosDatabase/HeliosDB-Nano/releases), rồi chạy
-  `heliosdb-nano start --data-dir ./helios-data --http-port 0`.
-
-Mở app, bấm **⚙ Kết nối** để nhập máy chủ, cổng, tài khoản và mật khẩu. Cấu hình lưu ở
-`%AppData%\TestDbHub\settings.json`; mật khẩu được mã hoá bằng Windows DPAPI.
 
 ## Cách dùng
 
-1. Bấm **+ Database** để tạo database test trên MySQL, ví dụ `shop_test`.
+1. Bấm **+ Database**, đặt tên (ví dụ `shop_test`), chọn nơi lưu **Tích hợp (SQLite)**.
 2. Bấm **Dữ liệu mẫu** rồi **▶ Chạy** (Ctrl+Enter hoặc F5) để tạo bảng `customers` và `orders`.
 3. Bấm **⑂ Tạo nhánh** `thu_migration` rồi chạy thử câu lệnh nguy hiểm (`UPDATE`, `ALTER`, `DELETE`…) trên
    nhánh. Nhánh `main` không bị ảnh hưởng.
-4. Nếu kết quả ổn, bấm **⤴ Ghi đè main** (MySQL) hoặc **⤴ Merge vào main** (HeliosDB). Nếu không ổn, bấm
-   **✕ Xoá nhánh**.
-5. Trên `main` của MySQL, bấm **📸 Snapshot** trước khi thay đổi lớn. Muốn quay lại, chọn snapshot rồi bấm
+4. Nếu kết quả ổn, bấm **⤴ Ghi đè main** (tích hợp / MySQL) hoặc **⤴ Merge vào main** (HeliosDB). Nếu không
+   ổn, bấm **✕ Xoá nhánh**.
+5. Trên `main`, bấm **📸 Snapshot** trước khi thay đổi lớn. Muốn quay lại, chọn snapshot rồi bấm
    **↺ Khôi phục vào main**.
-6. **⇄ Sao chép sang...** chép bảng sang engine, database hoặc nhánh khác, ví dụ đưa dữ liệu test từ MySQL sang
-   một nhánh HeliosDB.
+6. **⇄ Sao chép sang...** chép bảng sang database hoặc nhánh khác, kể cả sang MySQL / HeliosDB nếu có.
 7. Trên HeliosDB, **🕒 Time-travel** xem dữ liệu của một bảng tại một thời điểm trong quá khứ.
 
 Mẹo: bấm vào tên bảng để xem dữ liệu, **Shift + bấm** để xem cấu trúc cột.
 
 ## Giới hạn cần biết
+
+**Database tích hợp (SQLite)**
+- Cú pháp SQL là của SQLite, gần giống MySQL nhưng không giống hệt. Ví dụ: dùng `INTEGER PRIMARY KEY` thay cho
+  `AUTO_INCREMENT`, không có `ENUM`, kiểu dữ liệu linh hoạt hơn.
+- Nhánh và snapshot là bản sao đầy đủ của file database. Phù hợp với dữ liệu test cỡ nhỏ và vừa.
 
 **MySQL**
 - Nhánh là bản sao đầy đủ (dùng `CREATE TABLE … LIKE` và `INSERT … SELECT`). Khoá ngoại, view, trigger và
@@ -99,7 +105,8 @@ Mẹo: bấm vào tên bảng để xem dữ liệu, **Shift + bấm** để xem
 ```
 TestDbHub.sln
 src/
-  TestDbHub.Core/             thư viện dùng chung (net8.0), không phụ thuộc giao diện
+  TestDbHub.Core/             thư viện dùng chung (net10.0), không phụ thuộc giao diện
+    Engines/SqliteEngine.cs   database tích hợp: mỗi nhánh/snapshot là một file SQLite
     Engines/MySqlEngine.cs    MySQL: database, nhánh và snapshot giả lập (MySqlConnector)
     Engines/HeliosEngine.cs   HeliosDB-Nano: nhánh thật, merge, time-travel
     Engines/DbEngine.cs       phần chung: chạy SQL, đọc/ghi bảng, xuất .sql
@@ -107,19 +114,19 @@ src/
     CopyService.cs            sao chép bảng giữa các engine
     PortableSql.cs            quy đổi kiểu dữ liệu và literal SQL
     SqlSplitter.cs            tách script thành từng câu lệnh
-  TestDbHub.Wpf/              ứng dụng WPF (net8.0-windows, MVVM với CommunityToolkit.Mvvm)
+  TestDbHub.Wpf/              ứng dụng WPF (net10.0-windows, MVVM với CommunityToolkit.Mvvm)
     Views/MainWindow.xaml     cửa sổ chính
     Views/FormDialog.cs       hộp thoại nhập liệu dùng chung
     ViewModels/               MainViewModel, cây engine/database/nhánh, kết quả truy vấn
     Services/SettingsStore.cs lưu cấu hình kết nối
-tests/TestDbHub.Core.Tests/   xUnit: unit test và test tích hợp với MySQL/HeliosDB thật
-docker-compose.yml            MySQL + HeliosDB-Nano
+tests/TestDbHub.Core.Tests/   xUnit: unit test, test SQLite, test với MySQL/HeliosDB thật
+docker-compose.yml            MySQL + HeliosDB-Nano (tuỳ chọn)
 ```
 
 ## Chạy test
 
 ```bash
-dotnet test                                    # unit test
+dotnet test                                    # unit test + database tích hợp
 
 # Test tích hợp chạy với máy chủ thật khi đặt biến môi trường:
 export TESTDB_MYSQL_HOST=127.0.0.1 TESTDB_MYSQL_PASSWORD=testpass
